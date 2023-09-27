@@ -12,9 +12,16 @@ import com.azure.storage.blob.models.BlobItem;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 
 public class App {
+
+    // TODO: Replace <storage-account-name> with your actual storage account name
+
+    public static final String ENDPOINT =  "https://storageaccountmetasich.blob.core.windows.net/";
+
     public static void main(String[] args) {
 
         /*
@@ -24,9 +31,8 @@ public class App {
         DefaultAzureCredential defaultCredential = new DefaultAzureCredentialBuilder().build();
 
 // Azure SDK client builders accept the credential as a parameter
-// TODO: Replace <storage-account-name> with your actual storage account name
         BlobServiceClient blobServiceClient = new BlobServiceClientBuilder()
-                .endpoint("https://storageaccountsichkar.blob.core.windows.net/")
+                .endpoint(ENDPOINT)
                 .credential(defaultCredential)
                 .buildClient();
 
@@ -61,9 +67,12 @@ public class App {
 
         blobContainerClient = printContainerBlobList(blobServiceClient, containerName);
 
+        printContainerProperties(blobContainerClient);
+        setContainerMetadata(blobContainerClient);
+        readContainerMetadata(blobContainerClient);
+
 
         String downloadFileName = downloadBlobToLocalFile(blobContainerClient, localPath, fileName);
-
 
         cleanUpresources(blobContainerClient, localPath, fileName, downloadFileName);
 
@@ -73,7 +82,12 @@ public class App {
         System.out.println("\nUploading to Blob storage as blob:\n\t" + blobClient.getBlobUrl());
 
 // Upload the blob
-        blobClient.uploadFromFile(localPath + fileName);
+        try {
+            blobClient.uploadFromFile(localPath + fileName);
+        } catch (Exception e) {
+            System.out.println("Deleting the local source and downloaded files...");
+            File localFile = new File(localPath + fileName);
+            localFile.delete();        }
     }
 
     private static BlobContainerClient printContainerBlobList(BlobServiceClient blobServiceClient, String containerName) {
@@ -122,6 +136,36 @@ public class App {
         downloadedFile.delete();
 
         System.out.println("Done");
+    }
+
+    public static void printContainerProperties(BlobContainerClient blobContainerClient) {
+        BlobContainerProperties properties = blobContainerClient.getProperties();
+        System.out.printf("Public Access Type: %s, Legal Hold? %b, Immutable? %b%n",
+                properties.getBlobPublicAccess(),
+                properties.hasLegalHold(),
+                properties.hasImmutabilityPolicy());
+    }
+
+    public static void setContainerMetadata(BlobContainerClient blobContainerClient) {
+        Map<String, String> metadata = new HashMap<String, String>();
+        metadata.put("docType", "text");
+        metadata.put("category", "reference");
+
+        try {
+            blobContainerClient.setMetadata(metadata);
+            System.out.printf("Set metadata completed %n");
+        } catch (UnsupportedOperationException error) {
+            System.out.printf("Failure while setting metadata %n");
+        }
+    }
+
+    public static void readContainerMetadata(BlobContainerClient blobContainerClient) {
+        BlobContainerProperties properties = blobContainerClient.getProperties();
+
+        System.out.printf("Container metadata: %n");
+        properties.getMetadata().entrySet().forEach(metadataItem -> {
+            System.out.printf(" %s = %s%n", metadataItem.getKey(), metadataItem.getValue());
+        });
     }
 
 }
