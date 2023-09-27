@@ -6,6 +6,7 @@ import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
+import com.azure.storage.blob.models.BlobContainerProperties;
 import com.azure.storage.blob.models.BlobItem;
 
 import java.io.File;
@@ -55,12 +56,28 @@ public class App {
             System.out.println(ex.getMessage());
         }
 
+        uploadBlob(localPath, fileName, blobClient);
+
+
+        blobContainerClient = printContainerBlobList(blobServiceClient, containerName);
+
+
+        String downloadFileName = downloadBlobToLocalFile(blobContainerClient, localPath, fileName);
+
+
+        cleanUpresources(blobContainerClient, localPath, fileName, downloadFileName);
+
+    }
+
+    private static void uploadBlob(String localPath, String fileName, BlobClient blobClient) {
         System.out.println("\nUploading to Blob storage as blob:\n\t" + blobClient.getBlobUrl());
 
 // Upload the blob
         blobClient.uploadFromFile(localPath + fileName);
+    }
 
-
+    private static BlobContainerClient printContainerBlobList(BlobServiceClient blobServiceClient, String containerName) {
+        BlobContainerClient blobContainerClient;
         System.out.println("\nListing blobs...");
 
         // Create the container and return a container client object
@@ -69,8 +86,11 @@ public class App {
         for (BlobItem blobItem : blobContainerClient.listBlobs()) {
             System.out.println("\t" + blobItem.getName());
         }
+        return blobContainerClient;
+    }
 
-
+    private static String downloadBlobToLocalFile(BlobContainerClient blobContainerClient, String localPath, String fileName) {
+        BlobClient blobClient;
         // Download the blob to a local file
 
         // Append the string "DOWNLOAD" before the .txt extension for comparison purposes
@@ -82,9 +102,11 @@ public class App {
 // Get a reference to a blob
         blobClient = blobContainerClient.getBlobClient(fileName);
         blobClient.downloadToFile("./data/" + downloadFileName);
+        return downloadFileName;
+    }
 
-
-// Clean up resources
+    private static void cleanUpresources(BlobContainerClient blobContainerClient, String localPath, String fileName, String downloadFileName) {
+        // Clean up resources
         File downloadedFile = new File(localPath + downloadFileName);
         File localFile = new File(localPath + fileName);
 
@@ -100,7 +122,6 @@ public class App {
         downloadedFile.delete();
 
         System.out.println("Done");
-
     }
 
 }
